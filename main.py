@@ -11,10 +11,46 @@ class STUSB4500(EasyMCP2221.Device):
     STUSB4500_ADDR = 0x28
 
     # STUSB4500 NVM Register addresses
-    NVM_UNLOCK_REG = 0x95
+    NVM_FTP_KEY = 0x95
+    NVM_FTP_CTRL_0 = 0x96
+    NVM_FTP_CTRL_1 = 0x97
     NVM_UNLOCK_CODE = 0x47
+    NVM_FTP_CUST_RST_N = 0x40
+    NVM_FTP_CUST_RST   = 0x00
     NVM_START_ADDR = 0x53
     NVM_SIZE = 0x10  # Assuming NVM size is 16 bytes for this example
+
+    FTP_CUST_PASSWORD_REG=	0x95
+    FTP_CUST_PASSWORD	=	0x47
+    FTP_CTRL_0          =    0x96
+    FTP_CUST_PWR=	0x80
+    FTP_CUST_RST_N=	0x40
+    FTP_CUST_REQ=	0x10
+    FTP_CUST_SECT= 0x07
+    FTP_CTRL_1   =           0x97
+    FTP_CUST_SER =0xF8
+    FTP_CUST_OPCODE =0x07
+    RW_BUFFER =0x53
+
+    READ= 0x00
+    WRITE_PL= 0x01
+    WRITE_SER= 0x02
+    READ_PL	=0x03
+    READ_SER =0x04
+    ERASE_SECTOR =0x05
+    PROG_SECTOR =0x06
+    SOFT_PROG_SECTOR =0x07
+
+    SECTOR_0=	0x00
+    SECTOR_1=	0x01
+    SECTOR_2=	0x02
+    SECTOR_3=	0x03
+    SECTOR_4=	0x04
+    SECTOR_5=	0x05
+
+
+
+
 
     def __init__(self):
         # Initialize the parent class (EasyMCP2221.Device)
@@ -22,25 +58,45 @@ class STUSB4500(EasyMCP2221.Device):
 
     def unlock_nvm(self):
         # Write unlock code to the NVM unlock register
-
-        self.I2C_write(
-            addr=MEM_ADDR,
-            data=b'\x26\x00'
-        )
-        self.i2c.write_byte_data(self.STUSB4500_ADDR, self.NVM_UNLOCK_REG, self.NVM_UNLOCK_CODE)
+        payload=[self.NVM_FTP_KEY,self.NVM_UNLOCK_CODE]
+        self.I2C_write(addr=self.STUSB4500_ADDR,data=bytes(payload))
+        payload=[self.NVM_FTP_CTRL_0,self.NVM_FTP_CUST_RST_N]
+        self.I2C_write(addr=self.STUSB4500_ADDR,data=bytes(payload))
+        payload=[self.NVM_FTP_CTRL_0,self.NVM_FTP_CUST_RST]
+        self.I2C_write(addr=self.STUSB4500_ADDR,data=bytes(payload))
         time.sleep(0.01)  # Small delay to ensure the command is processed
+        payload=[self.NVM_FTP_CTRL_0,self.NVM_FTP_CUST_RST_N]
+        self.I2C_write(addr=self.STUSB4500_ADDR,data=bytes(payload))
+        #self.i2c.write_byte_data(self.STUSB4500_ADDR, self.NVM_UNLOCK_REG, self.NVM_UNLOCK_CODE)
+        #time.sleep(0.01)  # Small delay to ensure the command is processed
 
     def read_nvm(self):
         # Unlock NVM space
         self.unlock_nvm()
 
+        payload=[self.NVM_FTP_CTRL_1,self.READ]
+        self.I2C_write(addr=self.STUSB4500_ADDR,data=bytes(payload))
+        payload=[self.NVM_FTP_CTRL_0,self.NVM_FTP_CUST_RST_N|self.NVM_FTP_CUST_RST|self.SECTOR_0]
+        self.I2C_write(addr=self.STUSB4500_ADDR,data=bytes(payload))
         # Read NVM data from STUSB4500
-        nvm_data = []
-        for i in range(self.NVM_SIZE):
+        mcp.I2C_write(
+            addr=self.STUSB4500_ADDR,
+            data=self.RW_BUFFER
+            kind='nonstop')
+
+        # Read max 100 bytes
+        dataraw = mcp.I2C_read(
+            addr=self.STUSB4500_ADDR,
+            size=8,
+            kind='restart',
+            timeout_ms=200)
+
+        #nvm_data = []
+        #for i in range(self.NVM_SIZE):
             # Read each byte from the NVM
-            data = self.i2c.read_byte_data(self.STUSB4500_ADDR, self.NVM_START_ADDR + i)
-            nvm_data.append(data)
-            time.sleep(0.01)  # Small delay to ensure stable communication
+         #   data = self.i2c.read_byte_data(self.STUSB4500_ADDR, self.NVM_START_ADDR + i)
+         #   nvm_data.append(data)
+          #  time.sleep(0.01)  # Small delay to ensure stable communication
 
         return nvm_data
 
