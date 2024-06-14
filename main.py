@@ -14,6 +14,7 @@ class STUSB4500(EasyMCP2221.Device):
     NVM_FTP_KEY             = 0x95
     NVM_FTP_CTRL_0          = 0x96
     NVM_FTP_CTRL_1          = 0x97
+    NVM_FTP_CUST_SER        = 0x97
     NVM_UNLOCK_CODE         = 0x47
     NVM_UNLOCK_RESET        = 0x00
     NVM_FTP_CUST_RST_N      = 0x40
@@ -29,8 +30,11 @@ class STUSB4500(EasyMCP2221.Device):
     FTP_CUST_REQ            = 0x10
     FTP_CUST_SECT           = 0x07
     FTP_CTRL_1              = 0x97
-    FTP_CUST_SER            = 0xF8
-    FTP_CUST_OPCODE         = 0x07
+    FTP_CUST_FULL_ERASE     = 0xFA
+    FTP_CUST_OPCODE_SPA     = 0x07
+    FTP_CUST_OPCODE_EMA     = 0x05
+    FTP_CUST_OPCODE_SDP     = 0x01
+    FTP_CUST_OPCODE_EEPROM  = 0x06
     RW_BUFFER               = 0x53
 
     READ                    = 0x00
@@ -70,7 +74,6 @@ class STUSB4500(EasyMCP2221.Device):
         #time.sleep(0.01)  # Small delay to ensure the command is processed
     def stusb4500_write(self,payload):
         self.I2C_write(addr=self.STUSB4500_ADDR, data=bytes(payload))
-
     def stusb4500_read(self, start_address,size):
         self.I2C_write(self.STUSB4500_ADDR, [start_address], kind='nonstop')
 
@@ -82,10 +85,29 @@ class STUSB4500(EasyMCP2221.Device):
         self.stusb4500_write([self.FTP_CTRL_0, self.NVM_FTP_CUST_RST_N | self.FTP_CUST_REQ | sector])
         return self.stusb4500_read(self.NVM_START_ADDR,self.SECTOR_SIZE)
 
+    def write_nvm_sector(self,sector,sector_data):
+        self.stusb4500_write([self.RW_BUFFER] + sector_data)
+        self.stusb4500_write([self.NVM_FTP_CTRL_1, self.FTP_CUST_OPCODE_SDP])
+        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.FTP_CUST_RST_N | self.FTP_CUST_REQ])
+        time.sleep(0.01)  # Small delay to ensure the command is processed
+        self.stusb4500_write([self.NVM_FTP_CTRL_1, self.FTP_CUST_OPCODE_EEPROM])
+        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.FTP_CUST_RST_N | self.FTP_CUST_REQ | sector])
+        time.sleep(0.01)  # Small delay to ensure the command is processed
+
+    def cust_full_erase_sector(self):
+        self.stusb4500_write([self.NVM_FTP_CTRL_1, self.FTP_CUST_FULL_ERASE])
+        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.FTP_CUST_RST_N | self.FTP_CUST_REQ])
+        time.sleep(0.01)  # Small delay to ensure the command is processed
+        self.stusb4500_write([self.NVM_FTP_CTRL_1, self.FTP_CUST_OPCODE_SPA])
+        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.FTP_CUST_RST_N | self.FTP_CUST_REQ])
+        time.sleep(0.01)  # Small delay to ensure the command is processed
+        self.stusb4500_write([self.NVM_FTP_CTRL_1, self.FTP_CUST_OPCODE_EMA])
+        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.FTP_CUST_RST_N | self.FTP_CUST_REQ])
+        time.sleep(0.01)  # Small delay to ensure the command is processed
 
     def unlock_nvm_exit(self):
-        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.NVM_FTP_CUST_RST_N])
-        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.NVM_FTP_CUST_RST])
+        self.stusb4500_write([self.NVM_FTP_CTRL_0, self.NVM_FTP_CUST_RST_N, self.NVM_FTP_CUST_RST])
+       # self.stusb4500_write([self.NVM_FTP_CTRL_1, self.NVM_FTP_CUST_RST])
         self.stusb4500_write([self.NVM_FTP_KEY,self.NVM_UNLOCK_RESET])
 
     def read_full_nvm(self):
@@ -111,6 +133,17 @@ class STUSB4500(EasyMCP2221.Device):
 
         return sectorData
 
+    def write_full_nvm(self,data):
+        # Unlock NVM space
+        self.unlock_nvm()
+
+        self.cust_full_erase_sector()
+
+        for sector in range(self.SECTOR_COUNT):
+            self.write_nvm_sector(sector, data[sector])
+
+    self.unlock_nvm_exit()
+
     def print_nvm_data(self):
         # Read the NVM data
         nvm_data = self.read_full_nvm()
@@ -118,15 +151,29 @@ class STUSB4500(EasyMCP2221.Device):
         # Print the NVM data
         print("STUSB4500 NVM Data:")
         for i, data in enumerate(nvm_data):
-            print(f"Byte {i:02X}: {data:02X}")
+            print("sector " + str(i) + " =")
+            print(data)
+            for b in data:
+                print(hex(b), end='')
+            print("\n")
 
 def main():
+    STUSB4500_Config = [
+         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_C0, Data_C1, Data_C2, Data_C3, Data_C4, Data_C5, Data_C6, Data_C7
+         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_C8, Data_C9, Data_CA, Data_CB, Data_CC, Data_CD, Data_CE, Data_CF
+         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_D0, Data_D1, Data_D2, Data_D3, Data_D4, Data_D5, Data_D6, Data_D7
+         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_D8, Data_D9, Data_DA, Data_DB, Data_DC, Data_DD, Data_DE, Data_DF
+         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] # Data_E0, Data_E1, Data_E2, Data_E3, Data_E4, Data_E5, Data_E6, Data_E7
+         # Data_C0, Data_C1, Data_C2, Data_C3, Data_C4, Data_C5, Data_C6, Data_C7
+     ]
     # Create an instance of the STUSB4500 class
     stusb4500 = STUSB4500()
 
-    test = stusb4500.stusb4500_read(0x06, 20)
 
-    # Print the NVM data
+    print("NVM before writing")
+    stusb4500.print_nvm_data()
+    stusb4500.write_full_nvm(STUSB4500_Config)
+    print("NVM after writing")
     stusb4500.print_nvm_data()
 
 if __name__ == "__main__":
