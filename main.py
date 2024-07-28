@@ -1,8 +1,6 @@
 
 
 
-
-
 import EasyMCP2221
 import time
 
@@ -142,7 +140,7 @@ class STUSB4500(EasyMCP2221.Device):
         for sector in range(self.SECTOR_COUNT):
             self.write_nvm_sector(sector, data[sector])
 
-    self.unlock_nvm_exit()
+        self.unlock_nvm_exit()
 
     def print_nvm_data(self):
         # Read the NVM data
@@ -159,13 +157,13 @@ class STUSB4500(EasyMCP2221.Device):
 
 def main():
     STUSB4500_Config = [
-         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_C0, Data_C1, Data_C2, Data_C3, Data_C4, Data_C5, Data_C6, Data_C7
-         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_C8, Data_C9, Data_CA, Data_CB, Data_CC, Data_CD, Data_CE, Data_CF
-         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_D0, Data_D1, Data_D2, Data_D3, Data_D4, Data_D5, Data_D6, Data_D7
-         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00],# Data_D8, Data_D9, Data_DA, Data_DB, Data_DC, Data_DD, Data_DE, Data_DF
-         [0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00] # Data_E0, Data_E1, Data_E2, Data_E3, Data_E4, Data_E5, Data_E6, Data_E7
+         [0x00, 0x00, 0xB0, 0xAA, 0x00, 0x45, 0x00, 0x00],# Data_C0, Data_C1, Data_C2, Data_C3, Data_C4, Data_C5, Data_C6, Data_C7
+         [0x10, 0x40, 0x9C, 0x1C, 0xFF, 0x01, 0x3C, 0xDF],# Data_C8, Data_C9, Data_CA, Data_CB, Data_CC, Data_CD, Data_CE, Data_CF
+         [0x02, 0x40, 0x0F, 0x00, 0x32, 0x00, 0xFC, 0xF1],# Data_D0, Data_D1, Data_D2, Data_D3, Data_D4, Data_D5, Data_D6, Data_D7
+         [0x00, 0x19, 0xB6, 0xAF, 0xF7, 0x75, 0x5F, 0x00],# Data_D8, Data_D9, Data_DA, Data_DB, Data_DC, Data_DD, Data_DE, Data_DF
+         [0x00, 0x2D, 0xF0, 0x20, 0x43, 0x00, 0x40, 0xFB] # Data_E0, Data_E1, Data_E2, Data_E3, Data_E4, Data_E5, Data_E6, Data_E7
          # Data_C0, Data_C1, Data_C2, Data_C3, Data_C4, Data_C5, Data_C6, Data_C7
-     ]
+    ]
     # Create an instance of the STUSB4500 class
     stusb4500 = STUSB4500()
 
