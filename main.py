@@ -4,6 +4,9 @@
 import EasyMCP2221
 import time
 
+from EasyMCP2221 import NotAckError
+
+
 class STUSB4500(EasyMCP2221.Device):
     # Default I2C address for STUSB4500
     STUSB4500_ADDR = 0x28
@@ -169,10 +172,26 @@ def main():
 
 
     print("NVM before writing")
-    stusb4500.print_nvm_data()
-    stusb4500.write_full_nvm(STUSB4500_Config)
-    print("NVM after writing")
-    stusb4500.print_nvm_data()
+    while True:
+        try:
+            stusb4500.print_nvm_data()
+
+            print("Ready to write")
+            time.sleep(1)
+            print("3")
+            time.sleep(1)
+            print("2")
+            time.sleep(1)
+            print("1")
+            time.sleep(1)
+            print("GO")
+            stusb4500.write_full_nvm(STUSB4500_Config)
+            print("NVM after writing")
+            stusb4500.print_nvm_data()
+            input("Press Enter to continue...")
+        except NotAckError :
+            print("device not found")
+            time.sleep(1)
 
 if __name__ == "__main__":
     main()
@@ -226,7 +245,45 @@ if __name__ == '__main__':
     for val in datalist :
         print("Address " + hex(Offset) + " = 0x" + val)
         Offset +=1
-
+STUSB4500 NVM Data:
+sector 0 =
+b'\x00\x00\xb0\xab\x00E\x00\x00'
+0x00x00xb00xab0x00x450x00x0
+sector 1 =
+b'\x10@\x9c\x1c\xff\x01<\xdf'
+0x100x400x9c0x1c0xff0x10x3c0xdf
+sector 2 =
+b'\x02@\x0f\x002\x00\xfc\xf1'
+0x20x400xf0x00x320x00xfc0xf1
+sector 3 =
+b'\x00\x19V\xaf\xf55_\x00'
+0x00x190x560xaf0xf50x350x5f0x0
+sector 4 =
+b'\x00K\x90!C\x00@\xfb'
+0x00x4b0x900x210x430x00x400xfb
+Ready to write
+3
+2
+1
+GO
+NVM after writing
+STUSB4500 NVM Data:
+sector 0 =
+b'\x00\x00\xb0\xaa\x00E\x00\x00'
+0x00x00xb00xaa0x00x450x00x0
+sector 1 =
+b'\x10@\x9c\x1c\xff\x01<\xdf'
+0x100x400x9c0x1c0xff0x10x3c0xdf
+sector 2 =
+b'\x02@\x0f\x002\x00\xfc\xf1'
+0x20x400xf0x00x320x00xfc0xf1
+sector 3 =
+b'\x00\x19\xb6\xaf\xf7u_\x00'
+0x00x190xb60xaf0xf70x750x5f0x0
+sector 4 =
+b'\x00-\xf0 C\x00@\xfb'
+0x00x2d0xf00x200x430x00x400xfb
+Press Enter to continue...
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
 """
