@@ -46,6 +46,7 @@ class STUSB4500(EasyMCP2221.Device):
     ERASE_SECTOR            = 0x05
     PROG_SECTOR             = 0x06
     SOFT_PROG_SECTOR        = 0x07
+    SEND_COMMAND            = 0x26
 
     SECTOR_0                = 0x00
     SECTOR_1                = 0x01
@@ -55,6 +56,15 @@ class STUSB4500(EasyMCP2221.Device):
     SECTOR_5                = 0x05
     SECTOR_SIZE             = 8
     SECTOR_COUNT            = 5
+
+    REGMAP_START            = 0x06
+    REGMAP_SIZE             = 142
+    REGMAP_TX_HEADER_LOW    = 0x51
+    REGMAP_PD_COMMAND_CTRL  = 0x1A
+
+
+
+
 
 
 
@@ -78,8 +88,8 @@ class STUSB4500(EasyMCP2221.Device):
     def stusb4500_read(self, start_address,size):
         self.I2C_write(self.STUSB4500_ADDR, [start_address], kind='nonstop')
 
-        # Read max 100 bytes
-        dataraw = self.I2C_read(addr=self.STUSB4500_ADDR, size=size, kind='restart', timeout_ms=200)
+        # Read max 200 bytes
+        dataraw = self.I2C_read(addr=self.STUSB4500_ADDR, size=size, kind='restart', timeout_ms=400)
         return dataraw
 
     def read_nvm_sector(self,sector):
@@ -110,6 +120,15 @@ class STUSB4500(EasyMCP2221.Device):
         self.stusb4500_write([self.NVM_FTP_CTRL_0, self.NVM_FTP_CUST_RST_N, self.NVM_FTP_CUST_RST])
        # self.stusb4500_write([self.NVM_FTP_CTRL_1, self.NVM_FTP_CUST_RST])
         self.stusb4500_write([self.NVM_FTP_KEY,self.NVM_UNLOCK_RESET])
+
+    def soft_reset(self):
+        self.stusb4500_write([self.REGMAP_TX_HEADER_LOW, self.SOFT_RESET])
+        self.stusb4500_write([self.REGMAP_PD_COMMAND_CTRL, self.SEND_COMMAND])
+
+    def read_full_regmap(self):
+        regmapData = self.stusb4500_read(self.REGMAP_START,self.REGMAP_SIZE)
+        for index, data in enumerate(regmapData) :
+            print("reg address " + hex(index + self.REGMAP_START) + " : " + hex(data))
 
     def read_full_nvm(self):
         # Unlock NVM space
@@ -174,6 +193,8 @@ def main():
     print("NVM before writing")
     while True:
         try:
+            stusb4500.read_full_regmap()
+            stusb4500.soft_reset()
             stusb4500.print_nvm_data()
 
             print("Ready to write")
